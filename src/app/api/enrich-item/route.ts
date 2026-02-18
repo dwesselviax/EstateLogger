@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY!;
 
 const SYSTEM_PROMPT = `You are an estate auction enrichment specialist. Given an item name, description, category, and condition, provide market intelligence for auction listing.
 
@@ -27,6 +28,7 @@ Return ONLY the JSON object, no other text.`;
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { itemId } = await req.json();
 
     // Fetch the item
@@ -50,7 +52,7 @@ Location: ${item.location || "Unknown"}`;
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
       },
       body: JSON.stringify({
         model: "deepseek-chat",

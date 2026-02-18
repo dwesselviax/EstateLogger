@@ -8,13 +8,16 @@ import { formatDate } from "@/lib/utils";
 import type { Estate, Item } from "@/lib/types";
 
 // Public page — no auth required, server-rendered for SEO
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const supabase = getSupabase();
   const { data: estate } = await supabase
     .from("estates")
     .select("name, address, auction_date")
@@ -32,6 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function AuctionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const supabase = getSupabase();
 
   const [estateRes, itemsRes] = await Promise.all([
     supabase.from("estates").select("*").eq("id", id).eq("status", "published").single(),
