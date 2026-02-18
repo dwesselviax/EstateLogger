@@ -42,7 +42,15 @@ export default function EstateDetailPage() {
 
   async function handleDelete() {
     if (!confirm("Delete this estate? This cannot be undone.")) return;
-    await supabase.from("estates").delete().eq("id", id);
+    const { data, error, count, status } = await supabase.from("estates").delete().eq("id", id).select();
+if (error) {
+      alert(`Failed to delete: ${error.message}`);
+      return;
+    }
+    if (!data || data.length === 0) {
+      alert("Delete blocked — you may not own this estate or RLS is preventing deletion.");
+      return;
+    }
     router.push("/estates");
   }
 

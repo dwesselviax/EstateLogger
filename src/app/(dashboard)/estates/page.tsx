@@ -101,13 +101,16 @@ export default function EstatesPage() {
 
                 <div className="mt-4 flex items-center justify-end gap-3">
                   {estate.status === "published" && (
-                    <Link
-                      href={`/auction/${estate.id}`}
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = `/auction/${estate.id}`;
+                      }}
                       className="flex items-center gap-1 rounded-md bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
                     >
                       <ExternalLink size={12} /> View Live Auction
-                    </Link>
+                    </button>
                   )}
                   <span className="text-sm font-medium text-[#2A2A2A] opacity-0 transition-opacity group-hover:opacity-100">
                     Open <ArrowRight size={14} className="ml-1 inline" />
