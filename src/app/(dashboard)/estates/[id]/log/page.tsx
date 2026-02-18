@@ -3,13 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Mic, MicOff, Square, Loader2, Plus, Send } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, Square, Loader2, Plus, Send, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useSpeech } from "@/lib/use-speech";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import type { Item, LoggingSession } from "@/lib/types";
+import type { Item, ItemImage, LoggingSession } from "@/lib/types";
 
 export default function LoggingPage() {
   const { id: estateId } = useParams<{ id: string }>();
@@ -23,6 +23,10 @@ export default function LoggingPage() {
   const [extracting, setExtracting] = useState(false);
   const [manualInput, setManualInput] = useState("");
   const [showComplete, setShowComplete] = useState(false);
+  const [itemImages, setItemImages] = useState<Record<string, ItemImage[]>>({});
+  const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeItemIdRef = useRef<string | null>(null);
 
   const transcriptRef = useRef(transcript);
   transcriptRef.current = transcript;
@@ -74,6 +78,87 @@ export default function LoggingPage() {
         if (data) setItems(data as Item[]);
       });
   }, [estateId, supabase]);
+
+  // Load existing images for items
+  useEffect(() => {
+    if (items.length === 0) return;
+    const itemIds = items.map((i) => i.id);
+    supabase
+      .from("item_images")
+      .select("*")
+      .in("item_id", itemIds)
+      .then(({ data }) => {
+        if (data) {
+          const grouped: Record<string, ItemImage[]> = {};
+          for (const img of data as ItemImage[]) {
+            if (!grouped[img.item_id]) grouped[img.item_id] = [];
+            grouped[img.item_id].push(img);
+          }
+          setItemImages(grouped);
+        }
+      });
+  }, [items, supabase]);
+
+  // Handle image upload for an item
+  async function handleImageUpload(file: File, itemId: string) {
+    setUploadingItemId(itemId);
+    try {
+      const timestamp = Date.now();
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${estateId}/${itemId}/${timestamp}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("item-images")
+        .upload(path, file);
+
+      if (uploadError) {
+        console.error("Upload failed:", uploadError);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("item-images")
+        .getPublicUrl(path);
+
+      const { data: record, error: insertError } = await supabase
+        .from("item_images")
+        .insert({
+          item_id: itemId,
+          url: urlData.publicUrl,
+          type: "actual",
+          is_primary: !itemImages[itemId]?.length,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Insert failed:", insertError);
+        return;
+      }
+
+      setItemImages((prev) => ({
+        ...prev,
+        [itemId]: [...(prev[itemId] || []), record as ItemImage],
+      }));
+    } catch (err) {
+      console.error("Image upload error:", err);
+    } finally {
+      setUploadingItemId(null);
+    }
+  }
+
+  function openFilePicker(itemId: string) {
+    activeItemIdRef.current = itemId;
+    fileInputRef.current?.click();
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file && activeItemIdRef.current) {
+      handleImageUpload(file, activeItemIdRef.current);
+    }
+    e.target.value = "";
+  }
 
   // Extract items from transcript via API route
   const extractItems = useCallback(
@@ -205,6 +290,16 @@ export default function LoggingPage() {
 
   return (
     <div className="pb-32">
+      {/* Hidden file input for camera/gallery */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={onFileChange}
+      />
+
       {/* Header */}
       <Link
         href={`/estates/${estateId}`}
@@ -268,8 +363,35 @@ export default function LoggingPage() {
                       <p className="mt-0.5 text-sm text-gray-500">{item.description}</p>
                     )}
                   </div>
-                  <Badge>{item.category}</Badge>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openFilePicker(item.id)}
+                      disabled={uploadingItemId === item.id}
+                      className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+                      title="Add photo"
+                    >
+                      {uploadingItemId === item.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Camera size={16} />
+                      )}
+                    </button>
+                    <Badge>{item.category}</Badge>
+                  </div>
                 </div>
+                {/* Image thumbnails */}
+                {itemImages[item.id]?.length > 0 && (
+                  <div className="mt-2 flex gap-2 overflow-x-auto">
+                    {itemImages[item.id].map((img) => (
+                      <img
+                        key={img.id}
+                        src={img.url}
+                        alt={item.name}
+                        className="h-16 w-16 flex-shrink-0 rounded-md border border-gray-200 object-cover"
+                      />
+                    ))}
+                  </div>
+                )}
                 <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-gray-400">
                   {item.condition && item.condition !== "unknown" && (
                     <span className="capitalize">{item.condition}</span>

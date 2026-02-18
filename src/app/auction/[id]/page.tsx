@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Calendar, Package } from "lucide-react";
 import { AuctionItems } from "@/components/auction/auction-items";
@@ -57,7 +58,7 @@ export default async function AuctionPage({ params }: { params: Promise<{ id: st
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="mb-4 flex items-center justify-center">
-            <Image src="/logo.webp" alt="Butterscotch Auction" width={220} height={50} className="h-10 w-auto" priority />
+            <Link href="/"><Image src="/logo.webp" alt="Butterscotch Auction" width={220} height={50} className="h-10 w-auto" priority /></Link>
           </div>
 
           <div className="text-center">
