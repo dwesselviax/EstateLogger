@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import type { Item, EnrichmentRecord } from "@/lib/types";
+import type { Item, EnrichmentRecord, ItemImage } from "@/lib/types";
+
+function getPrimaryImage(images?: ItemImage[]): ItemImage | undefined {
+  if (!images || images.length === 0) return undefined;
+  return images.find((img) => img.is_primary) ?? images[0];
+}
 
 interface AuctionItemsProps {
   items: Item[];
@@ -83,9 +89,21 @@ export function AuctionItems({ items, categories }: AuctionItemsProps) {
               onClick={() => setSelectedItem(item)}
               className="group rounded-xl border border-gray-200 bg-white p-4 text-left transition-shadow hover:shadow-md"
             >
-              {/* Placeholder image area */}
-              <div className="mb-3 flex h-36 items-center justify-center rounded-lg bg-gray-50 text-gray-300">
-                <span className="text-3xl">📦</span>
+              {/* Item image */}
+              <div className="relative mb-3 h-36 overflow-hidden rounded-lg bg-gray-50">
+                {getPrimaryImage(item.images) ? (
+                  <Image
+                    src={getPrimaryImage(item.images)!.url}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-gray-300">
+                    <span className="text-3xl">📦</span>
+                  </div>
+                )}
               </div>
 
               <div className="mb-2 flex items-start justify-between gap-2">
@@ -139,6 +157,19 @@ function ItemDetailModal({ item, onClose }: { item: Item; onClose: () => void })
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl sm:rounded-2xl">
+        {/* Modal image */}
+        {getPrimaryImage(item.images) && (
+          <div className="relative -mx-6 -mt-6 mb-4 h-64 overflow-hidden rounded-t-2xl">
+            <Image
+              src={getPrimaryImage(item.images)!.url}
+              alt={item.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 100vw, 512px"
+            />
+          </div>
+        )}
+
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold">{item.name}</h2>
